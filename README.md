@@ -8,7 +8,7 @@ This action locates the current version of the repository using its tags, incre
 
 **Required** The type of semantic version increment to make. One of `major`, `premajor`, `minor`, `preminor`, `patch`, `prepatch`, or `prerelease`.
 
-You may get this value from another action, such as [zwaldowski/match-label-action](https://github.com/zwaldowski/match-label-action).
+You may get this value from another action, such as [arago/match-label-action](https://github.com/arago/match-label-action).
 
 ### `github_token`
 
@@ -52,10 +52,10 @@ Create a version, f.ex., when merging to master.
 
 ```yaml
 - id: bump
-  uses: zwaldowski/match-label-action@v1
+  uses: arago/match-label-action@v1
   with:
     allowed: major,minor,patch
-- uses: zwaldowski/semver-release-action@v1
+- uses: arago/semver-release-action@v1
   with:
     bump: ${{ steps.bump.outputs.match }}
     github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -67,7 +67,7 @@ Create a version and use the version to modify the repo, such as update a `READM
 
 ```yaml
 - id: next_version
-  uses: zwaldowski/semver-release-action@v1
+  uses: arago/semver-release-action@v1
     with:
       dry_run: true
       bump: ${{ … }}
@@ -79,7 +79,7 @@ Create a version and use the version to modify the repo, such as update a `READM
     git commit -m "Bump version"
     git push
     echo ::set-output name=sha::$(git rev-parse HEAD)
-- uses: zwaldowski/semver-release-action@v1
+- uses: arago/semver-release-action@v1
   with:
     github_token: ${{ secrets.GITHUB_TOKEN }}
     sha: ${{ steps.git_commit.outputs.sha }}
