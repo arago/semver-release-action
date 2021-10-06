@@ -100,6 +100,8 @@ async function createTag(version) {
 }
 
 async function run() {
+  const skipBump = core.getInput("skip_bump", { required: false });
+
   try {
     let version = semver.parse(process.env.VERSION);
     if (version === null) {
@@ -109,7 +111,11 @@ async function run() {
       console.log(
         `Using latest tag "${latestTag.toString()}" with identifier "${identifier}"`
       );
-      version = semver.inc(latestTag, bump, identifier);
+      if (skipBump === "true") {
+        version = latestTag.toString();
+      } else {
+        version = semver.inc(latestTag, bump, identifier);
+      }
     }
 
     const prefix = core.getInput("prefix", { required: false }) || "";
@@ -126,7 +132,7 @@ async function run() {
 
     console.log(`Result: "${version.toString()}" (tag: "${version_tag}")`);
 
-    if (core.getInput("dry_run") !== "true") {
+    if (core.getInput("dry_run") !== "true" && skipBump !== "true") {
       await createTag(version_tag);
     }
   } catch (error) {
