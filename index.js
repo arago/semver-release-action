@@ -1,135 +1,121 @@
-const core = require("@actions/core");
-const exec = require("@actions/exec");
-const github = require("@actions/github");
-const semver = require("semver");
+const process = require('process')
+const core = require('@actions/core')
+const exec = require('@actions/exec')
+const github = require('@actions/github')
+const semver = require('semver')
+
+const {handlePrefixes} = require('./prefix.js')
 
 async function getMostRecentRepoTag() {
-  console.log("Getting list of tags from repository");
-  const token = core.getInput("github_token", { required: true });
-  const prefix = core.getInput("prefix", { required: false }) || "";
-  const octokit = github.getOctokit(token);
+  console.log('Getting list of tags from repository')
+  const token = core.getInput('github_token', {required: true})
+  const octokit = github.getOctokit(token)
 
-  const { data: refs } = await octokit.git.listMatchingRefs({
+  const {data: refs} = await octokit.git.listMatchingRefs({
     ...github.context.repo,
-    namespace: "tags/",
-  });
+    namespace: 'tags/',
+  })
 
-  const prx = new RegExp(`^${prefix}`, "g");
-  const versions = refs
-    .map(({ ref }) => ref.replace(/^refs\/tags\//g, ""))
-    .filter((ref) => (prx ? ref.startsWith(prefix) : true))
-    .map((ref) => ref.replace(prx, ""))
-    .map((tag) => semver.parse(tag, { loose: true }))
+  const tags = refs.map(({ref}) => ref.replace(/^refs\/tags\//g, ''))
+  const versions = handlePrefixes(tags)
+    .map((tag) => semver.parse(tag, {loose: true}))
     .filter((version) => version !== null)
-    .sort(semver.rcompare);
+    .sort(semver.rcompare)
 
-  return versions[0] || semver.parse("0.0.0");
+  return versions[0] || semver.parse('0.0.0')
 }
 
 async function getMostRecentBranchTag() {
-  console.log(`Getting list of tags from branch`);
-  let output = "";
-  let err = "";
-  const options = {};
+  console.log(`Getting list of tags from branch`)
+  let output = ''
+  let error = ''
+  const options = {}
   options.listeners = {
     stdout: (data) => {
-      output += data.toString();
+      output += data.toString()
     },
     stderr: (data) => {
-      err += data.toString();
+      error += data.toString()
     },
-  };
-  options.cwd = ".";
-  let exitCode = await exec.exec(
-    "git",
-    ["fetch", "--tags", "--quiet"],
-    options
-  );
-  if (exitCode != 0) {
-    console.log(err);
-    process.exit(exitCode);
   }
-  exitCode = await exec.exec(
-    "git",
-    ["tag", "--no-column", "--merged"],
-    options
-  );
-  if (exitCode != 0) {
-    console.log(err);
-    process.exit(exitCode);
+  options.cwd = '.'
+  let exitCode = await exec.exec('git', ['fetch', '--tags', '--quiet'], options)
+  if (exitCode !== 0) {
+    throw error
   }
-  const prefix = core.getInput("prefix", { required: false }) || "";
-  const prx = new RegExp(`^${prefix}`, "g");
-  const versions = output
-    .split("\n")
-    .filter((tag) => (prx ? tag.startsWith(prefix) : true))
-    .map((tag) => tag.replace(prx, ""))
-    .map((tag) => semver.parse(tag, { loose: true }))
-    .filter((version) => version !== null)
-    .sort(semver.rcompare);
 
-  return versions[0] || semver.parse("0.0.0");
+  exitCode = await exec.exec('git', ['tag', '--no-column', '--merged'], options)
+  if (exitCode !== 0) {
+    throw error
+  }
+
+  const tags = output.split('\n')
+  const versions = handlePrefixes(tags)
+    .map((tag) => semver.parse(tag, {loose: true}))
+    .filter((version) => version !== null)
+    .sort(semver.rcompare)
+
+  return versions[0] || semver.parse('0.0.0')
 }
 
 async function mostRecentTag() {
-  const perBranch = core.getInput("per_branch", { required: false });
-  if (perBranch === "true") {
-    return getMostRecentBranchTag();
-  } else {
-    return getMostRecentRepoTag();
+  const perBranch = core.getInput('per_branch', {required: false})
+  if (perBranch === 'true') {
+    return getMostRecentBranchTag()
   }
+
+  return getMostRecentRepoTag()
 }
 
 async function createTag(version) {
-  const token = core.getInput("github_token", { required: true });
-  const octokit = github.getOctokit(token);
-  const sha = core.getInput("sha") || github.context.sha;
-  const ref = `refs/tags/${version}`;
+  const token = core.getInput('github_token', {required: true})
+  const octokit = github.getOctokit(token)
+  const sha = core.getInput('sha') || github.context.sha
+  const ref = `refs/tags/${version}`
   await octokit.git.createRef({
     ...github.context.repo,
     ref,
     sha,
-  });
+  })
 }
 
 async function run() {
   try {
-    let version = semver.parse(process.env.VERSION);
-    const bump = core.getInput("bump", { required: true });
+    let version = semver.parse(process.env.VERSION)
+    const bump = core.getInput('bump', {required: true})
 
     if (version === null) {
-      const latestTag = await mostRecentTag();
-      const identifier = core.getInput("preid", { required: false }) || "";
+      const latestTag = await mostRecentTag()
+      const identifier = core.getInput('preid', {required: false}) || ''
       console.log(
-        `Using latest tag "${latestTag.toString()}" with identifier "${identifier}"`
-      );
-      if (bump === "skip") {
-        version = latestTag.toString();
-      } else {
-        version = semver.inc(latestTag, bump, identifier);
-      }
+        `Using latest tag "${latestTag.toString()}" with identifier "${identifier}"`,
+      )
+      version =
+        bump === 'skip'
+          ? latestTag.toString()
+          : semver.inc(latestTag, bump, identifier)
     }
 
-    const prefix = core.getInput("prefix", { required: false }) || "";
-    let version_tag = prefix + version.toString();
-    console.log(`Using tag prefix "${prefix}"`);
+    const prefix = core.getInput('prefix', {required: false}) || ''
+    const versionTag = prefix + version.toString()
+    console.log(`Using tag prefix "${prefix}"`)
 
-    core.exportVariable("VERSION", version.toString());
-    core.setOutput("version", version.toString());
+    core.exportVariable('VERSION', version.toString())
+    core.setOutput('version', version.toString())
     core.setOutput(
-      "version_optimistic",
-      `${semver.major(version)}.${semver.minor(version)}`
-    );
-    core.setOutput("version_tag", version_tag);
+      'version_optimistic',
+      `${semver.major(version)}.${semver.minor(version)}`,
+    )
+    core.setOutput('version_tag', versionTag)
 
-    console.log(`Result: "${version.toString()}" (tag: "${version_tag}")`);
+    console.log(`Result: "${version.toString()}" (tag: "${versionTag}")`)
 
-    if (core.getInput("dry_run") !== "true" && bump !== "skip") {
-      await createTag(version_tag);
+    if (core.getInput('dry_run') !== 'true' && bump !== 'skip') {
+      await createTag(versionTag)
     }
   } catch (error) {
-    core.setFailed(error.message);
+    core.setFailed(error.message)
   }
 }
 
-run();
+run()

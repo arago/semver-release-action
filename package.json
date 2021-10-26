@@ -4,8 +4,9 @@
   "description": "Create the next semantic version and tag it.",
   "main": "index.js",
   "scripts": {
+    "lint": "xo --fix",
     "package": "ncc build index.js -o dist",
-    "test": "eslint index.js"
+    "test": "xo && ava"
   },
   "repository": {
     "type": "git",
@@ -30,6 +31,16 @@
   },
   "devDependencies": {
     "@vercel/ncc": "^0.25.1",
-    "eslint": "^7.14.0"
+    "ava": "^3.15.0",
+    "eslint": "^7.14.0",
+    "xo": "^0.45.0"
+  },
+  "xo": {
+    "prettier": true,
+    "rules": {
+      "unicorn/prefer-module": "off"
+    },
+    "semicolon": false,
+    "space": true
   }
 }

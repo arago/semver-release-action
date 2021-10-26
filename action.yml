@@ -22,6 +22,10 @@ inputs:
     description: 'Version prefix used to create tag. Usually empty or "v" or "=".'
     required: false
     default: ""
+  include_tag_type:
+    description: "If specified, only tags with 't' or 'v' based prefix will be included e.g. v1.0.0. The 't' and 'v' will not be removed from output. This can be used with prefix for mono-repos."
+    required: false
+    default: false
   preid:
     description: "Identifier to be used to prefix premajor, preminor, prepatch or prerelease version increments."
     required: false
